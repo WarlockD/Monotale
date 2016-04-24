@@ -328,7 +328,6 @@ namespace UndertaleResources
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            long newPos = 0;
             switch (origin)
             {
                 case SeekOrigin.Begin:
@@ -353,7 +352,7 @@ namespace UndertaleResources
         }
     }
 
-    internal class ChunkStream : BinaryReader
+     class ChunkStream : BinaryReader
     {
         Stack<int> posStack = new Stack<int>();
         // used on reading strings so we don't go creating a new one for thousands of things
@@ -534,8 +533,13 @@ namespace UndertaleResources
     public abstract class FilePosition : IComparable<FilePosition>, IEquatable<FilePosition>
     { //create comparer
         public int Position { get; protected set; }
-        public FilePosition() { Position = -1; }
-        internal abstract void Read(ChunkStream cs);
+        public int Index { get; protected set; }
+        public FilePosition()
+        {
+            Index = -1;
+            Position = -1;
+        }
+        internal abstract void Read(ChunkStream r,int index);
 
         public int CompareTo(FilePosition other)
         {
@@ -566,21 +570,23 @@ namespace UndertaleResources
     public class Texture : FilePosition
     {
         int _pngLength;
-
+        int _pngOffset;
         // I could read a bitmap here like I did in my other library however
         // monogame dosn't use Bitmaps, neither does unity, so best just to make a sub stream
         public Stream GetTextureStream(Stream s)
         {
-            s.Position = Position;
-            return new OffsetStream(s, Position, _pngLength);
+            s.Position = _pngOffset;
+            return new OffsetStream(s, _pngOffset, _pngLength);
         }
         static readonly byte[] pngSigBytes = new byte[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
         static readonly string pngSig = System.Text.Encoding.UTF8.GetString(pngSigBytes);
-        internal override void Read(ChunkStream r)
+        internal override void Read(ChunkStream r,int index)
         {
+            Position = r.Position;
+            Index = index;
             int dummy = r.ReadInt32(); // Always 1
-            Position = r.ReadInt32(); // offset to texture
-            r.Position = Position;
+            _pngOffset = r.ReadInt32(); // offset to texture
+            r.Position = _pngOffset;
             string sig = r.readFixedString(8);
 
             if (sig != pngSig) throw new Exception("Texture not a png");
@@ -625,9 +631,10 @@ namespace UndertaleResources
             int size = br.ReadInt32();
             return new MemoryStream(br.ReadBytes(size));
         }
-        internal override void Read(ChunkStream r)
+        internal override void Read(ChunkStream r, int index)
         {
             Position = r.Position;
+            Index = index;
             Name = string.Intern(r.readStringFromOffset()); // be sure to intern the name
             AudioType = r.ReadInt32();
             // Ok, 101 seems to be wave files in the win files eveything else is mabye exxternal?
@@ -656,9 +663,10 @@ namespace UndertaleResources
         public short OriginalWidth { get; private set; }
         public short OriginalHeight { get; private set; }
         public short TextureIndex { get; private set; }
-        internal override void Read(ChunkStream cs)
+        internal override void Read(ChunkStream cs,int index)
         {
             Position = cs.Position;
+            Index = index;
             X = cs.ReadInt16();
             Y = cs.ReadInt16();
             Width = cs.ReadInt16();
@@ -683,9 +691,10 @@ namespace UndertaleResources
         public int Another { get; private set; }
         public int[] Extra { get; private set; }
         public SpriteFrame[] Frames { get; private set; }
-        internal override void Read(ChunkStream r)
+        internal override void Read(ChunkStream r,int index)
         {
             Position = r.Position;
+            Index = index;
             Name = string.Intern(r.readStringFromOffset()); // be sure to intern the name
             Width = r.ReadInt32();
             Height = r.ReadInt32();
@@ -720,9 +729,10 @@ namespace UndertaleResources
         public int ParentIndex;
         public int Mask;
 
-        internal override void Read(ChunkStream r)
+        internal override void Read(ChunkStream r,int index)
         {
             Position = r.Position;
+            Index = index;
             Name = string.Intern(r.readStringFromOffset());
             int spriteIndex = r.ReadInt32();
             if (spriteIndex < 0)
@@ -744,17 +754,18 @@ namespace UndertaleResources
         public bool Smooth { get; private set; }
         public bool Preload { get; private set; }
         public SpriteFrame Frame { get; private set; }
-        internal override void Read(ChunkStream r)
+        internal override void Read(ChunkStream r,int index)
         {
             Position = r.Position;
+            Index = index;
             Name = string.Intern(r.readStringFromOffset());
             Trasparent = r.readIntBool();
             Smooth = r.readIntBool();
             Preload = r.readIntBool();
-            Frame = new SpriteFrame();
             int offset = r.ReadInt32();
             r.Position = offset;
-            Frame.Read(r);
+            Frame = new SpriteFrame();
+            Frame.Read(r, -1);
         }
     };
     public class Room : FilePosition, NamedResrouce
@@ -774,10 +785,11 @@ namespace UndertaleResources
             public int Border_Y;
             public int Speed_X;
             public int Speed_Y;
-            public int Index;
-            internal override void Read(ChunkStream r)
+            public int ViewIndex;
+            internal override void Read(ChunkStream r,int index)
             {
                 Position = r.Position;
+                Index = index;
                 Visible = r.readIntBool();
                 X= r.ReadInt32();
                 Y = r.ReadInt32();
@@ -798,27 +810,27 @@ namespace UndertaleResources
         {
             public bool Visible;
             public bool Foreground;
-            public int Index;
+            public int BackgroundIndex;
             public int X;
             public int Y;
             public int TiledX;
             public int TiledY;
             public int SpeedX;
-            public int SpeedyY;
+            public int SpeedY;
             public bool Stretch;
-
-            internal override void Read(ChunkStream r)
+            internal override void Read(ChunkStream r,int index)
             {
                 Position = r.Position;
+                Index = index;
                 Visible = r.readIntBool();
                 Foreground = r.readIntBool();
-                Index = r.ReadInt32();
+                BackgroundIndex = r.ReadInt32();
                 X = r.ReadInt32();
                 Y = r.ReadInt32();
                 TiledX = r.ReadInt32();
                 TiledY = r.ReadInt32();
                 SpeedX = r.ReadInt32();
-                SpeedyY = r.ReadInt32();
+                SpeedY = r.ReadInt32();
                 Stretch = r.readIntBool();
             }
         };
@@ -826,23 +838,24 @@ namespace UndertaleResources
         {
             public int X;
             public int Y;
-            public int Index;
+            public int ObjectIndex;
             public int Id;
             public int CodeOffset;
             public float Scale_X;
             public float Scale_Y;
             public int Colour;
             public float Rotation;
-            internal override void Read(ChunkStream r)
+            internal override void Read(ChunkStream r, int index)
             {
                 Position = r.Position;
+                Index = index;
                 X = r.ReadInt32();
                 Y = r.ReadInt32();
-                Index = r.ReadInt32();
+                ObjectIndex = r.ReadInt32();
                 Id = r.ReadInt32();
                 CodeOffset = r.ReadInt32();
-                Scale_X = r.ReadInt32();
-                Scale_Y = r.ReadInt32();
+                Scale_X = r.ReadSingle();
+                Scale_Y = r.ReadSingle();
                 Colour = r.ReadInt32();
                 Rotation = r.ReadSingle();
             }
@@ -851,7 +864,7 @@ namespace UndertaleResources
         {
             public int X;
             public int Y;
-            public int Index;
+            public int BackgroundIndex;
             public int OffsetX;
             public int OffsetY;
             public int Width;
@@ -862,12 +875,13 @@ namespace UndertaleResources
             public float ScaleY;
             public int Blend;
             public int Ocupancy;
-            internal override void Read(ChunkStream r)
+            internal override void Read(ChunkStream r,int index)
             {
                 Position = r.Position;
+                Index = index;
                 X = r.ReadInt32();
                 Y = r.ReadInt32();
-                Index = r.ReadInt32();
+                BackgroundIndex = r.ReadInt32();
                 OffsetX = r.ReadInt32();
                 OffsetY = r.ReadInt32();
                 Width = r.ReadInt32();
@@ -896,11 +910,10 @@ namespace UndertaleResources
         public View[] Views;
         public Instance[] Objects;
         public Tile[] Tiles;
-
-
-        internal override void Read(ChunkStream r)
+        internal override void Read(ChunkStream r,int index)
         {
             Position = r.Position;
+            Index = index;
             Name = r.readStringFromOffset();
             Caption = r.readStringFromOffset();
             Width = r.ReadInt32();
@@ -921,9 +934,46 @@ namespace UndertaleResources
             Tiles = UndertaleResrouce.ArrayFromOffset<Tile>(r, tilesOffset);
         }
     }
+    public class Font : FilePosition, NamedResrouce
+    {
+        public string Name
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
 
+        internal override void Read(ChunkStream cs,int index)
+        {
+            throw new NotImplementedException();
+        }
 
-    public class UndertaleResrouce
+        public class Glyph : FilePosition
+        {
+            public short ch;
+            public short x;
+            public short y;
+            public short width;
+            public short height;
+            public short shift;
+            public short offset;
+            internal override void Read(ChunkStream r, int index)
+            {
+                Position = r.Position;
+                Index = index;
+                ch = r.ReadInt16();
+                x = r.ReadInt16();
+                y = r.ReadInt16();
+                width = r.ReadInt16();
+                height = r.ReadInt16();
+                shift = r.ReadInt16();
+                offset = r.ReadInt16();
+            }
+        }
+    }
+
+            public class UndertaleResrouce
     {
         static bool loaded = false;
         static List<string> stringList;
@@ -937,6 +987,12 @@ namespace UndertaleResources
         static Dictionary<string, FilePosition> namedResourceLookup = new Dictionary<string, FilePosition>();
 
         public static IReadOnlyList<Texture> Textures { get { return textures; } }
+        public static IReadOnlyList<Sprite> Sprites { get { return sprites; } }
+        public static IReadOnlyList<UObject> Objects { get { return objects; } }
+        public static IReadOnlyList<Room> Rooms { get { return rooms; } }
+        public static IReadOnlyList<Background> Backgrounds { get { return backgrounds; } }
+        public static IReadOnlyList<AudioFile> Sounds { get { return sounds; } }
+
         static public AudioFile AudioAtIndex(int index)
         {
             if (index < 0 || index > sounds.Count) throw new IndexOutOfRangeException("Sprite index out of range");
@@ -996,7 +1052,7 @@ namespace UndertaleResources
             {
                 r.Position = offsets[i];
                 T obj = new T();
-                obj.Read(r);
+                obj.Read(r,i);
                 data[i] = obj;
             }
             r.PopPosition();
@@ -1042,12 +1098,51 @@ namespace UndertaleResources
             foreach (ChunkEntry e in entries)
             {
                 T t = new T();
-                t.Read(r);
+                t.Read(r, list.Count);
                 list.Add(t);
                 if (isNamedResouce)
                 {
                     NamedResrouce nr = t as NamedResrouce;
                     namedResourceLookup.Add(nr.Name, t);
+                }
+            }
+        }
+        public static void DebugPring()
+        {
+            using (StreamWriter sr = new StreamWriter("object_info.txt"))
+            {
+                for(int i=0;i < objects.Count;i++)
+                {
+                    var o = objects[i];
+                    sr.Write("{0,-4}: Name: {1:-20}", i, o.Name);
+                    if (o.ParentIndex > 0) sr.Write("  Parent({0}): {1}", o.ParentIndex,objects[o.ParentIndex].Name);
+                    sr.WriteLine();
+                }
+            }
+            using (StreamWriter sr = new StreamWriter("sprite_info.txt"))
+            {
+                for (int i = 0; i < sprites.Count; i++)
+                {
+                    var o = sprites[i];
+                    sr.Write("{0,-4}: Name: {1:-20}", i, o.Name);
+                    sr.Write("  Frames: {0}", o.Frames.Length);
+                    sr.WriteLine();
+                }
+            }
+            using (StreamWriter sr = new StreamWriter("room_info.txt"))
+            {
+                for (int i = 0; i < rooms.Count; i++)
+                {
+                    var o = rooms[i];
+                    sr.Write("{0,-4}: Name: {1:-20} Size({2},{3})", i, o.Name,o.Width,o.Height);
+                    sr.WriteLine();
+                    if (o.Objects.Length > 0)
+                        for (int j = 0; j < o.Objects.Length; j++)
+                        {
+                            var oo = o.Objects[j];
+                            var obj = objects[oo.Index];
+                            sr.WriteLine("       Object: {0}  Pos({1},{2}", obj.Name, oo.X, oo.Y);
+                        }
                 }
             }
         }
@@ -1078,6 +1173,8 @@ namespace UndertaleResources
             if (chunks.TryGetValue("SOND", out chunk)) ReadList(sounds, r, chunk.start, chunk.end);// audio files
 
             if (chunks.TryGetValue("ROOM", out chunk)) ReadList(rooms, r, chunk.start, chunk.end);// sprites
+
+         //  DebugPring();
             loaded = true;
         }
         public static void LoadResrouces(string data_win_filename)
