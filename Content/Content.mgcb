@@ -19,3 +19,21 @@
 /processorParam:TextureFormat=Compressed
 /build:DebugFont.spritefont
 
+#begin fnt_wingdings.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:TextureFormat=Compressed
+/build:fnt_wingdings.spritefont
+
+#begin fnt_main.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:TextureFormat=Compressed
+/build:fnt_main.spritefont
+
+#begin fnt_maintext.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:TextureFormat=Compressed
+/build:fnt_maintext.spritefont
+

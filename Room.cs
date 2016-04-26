@@ -39,7 +39,7 @@ namespace MonoUndertale
         public float UpdatesPerSecond = 30.0f;
         bool CheckFrame(GameTime theGameTime)
         {
-            float current = (float)theGameTime.ElapsedGameTime.TotalSeconds;
+            float current = (float)theGameTime.TotalGameTime.TotalSeconds;
             if (current > _next_frame)
             {
                 _next_frame = current + (1.0f / UpdatesPerSecond); 
@@ -175,16 +175,23 @@ namespace MonoUndertale
             if (!UndertaleResrouce.TryGetResource(name, out rawRoom)) throw new Exception("Cannot find room");
             LoadRoom(rawRoom);
         }
+        GameObject obj_writer;
         public Room(int index)
         {
+           
             LoadRoom(UndertaleResrouce.RoomAtIndex(index));
+            obj_writer = GameObject.CreateInstance("OBJ_WRITER", 100, 100);
+            _objects.Add(obj_writer);
+
         }
-        public void Update(GameTime time)
+        public bool Update(GameTime time)
         {
             if (CheckFrame(time))
             {
                 foreach (var b in _objects) b.Tick();
+                return true;
             }
+            return false;
             
         }
         public bool DebugObjects = false;

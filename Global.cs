@@ -7,6 +7,11 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Diagnostics;
+using MoonSharp.Interpreter;
+using MoonSharp.RemoteDebugger;
+using Microsoft.Xna.Framework.Audio;
+//using Neo.IronLua;
+
 namespace MonoUndertale
 {
     // Undertale uses this big global flags for alot of its stuff
@@ -39,7 +44,169 @@ namespace MonoUndertale
                 return 0.5f + ret;
             }
         }
-       public static int[] Flag = new int[512];
+        //  public static Lua L;
+        //  public static LuaGlobal G;
+        //  public static LuaTable global;
+        private static RemoteDebuggerService remoteDebugger =null;
+        public static Script L;
+        public static DynValue global;
+        public const string ScriptPath = @"..\..\..\..\scripts\";
+        static Dictionary<string, SoundEffect> soundLookup = new Dictionary<string, SoundEffect>();
+        static Dictionary<string, SoundEffectInstance> soundInstances = new Dictionary<string, SoundEffectInstance>();
+        public static SoundEffect FindUndertaleSound(string name)
+        {
+            SoundEffect sound;
+            if (!soundLookup.TryGetValue(name, out sound)) {
+                UndertaleResources.AudioFile audioFile;
+                if (!UndertaleResources.UndertaleResrouce.TryGetResource<UndertaleResources.AudioFile>(name, out audioFile)) throw new Exception("Sound file not found");
+
+                sound = SoundEffect.FromStream(new System.IO.MemoryStream(UndertaleResources.UndertaleResrouce.AudioDataAtIndex(audioFile.SoundIndex)));
+                soundLookup[name] = sound;
+            }
+            return sound;
+        }
+        public static void StartUpLua()
+        {
+            UserData.RegisterAssembly();
+            Script script = new Script();
+            L = script;
+            global = DynValue.NewPrimeTable();
+            L.Globals["global"] = global;
+            L.Globals["print"] = new Action<string>((string msg) =>
+            {
+                Debug.WriteLine(msg);
+            });
+            L.Globals["string_char_at"] = new Func<object, int, string>((object o, int pos) =>
+              {
+                  if (o == null) return null;
+                  string msg = o as string;
+                  if (pos >= 0 && pos < msg.Length)
+                  {
+                      string ret = msg[pos].ToString();
+                      return ret;
+                  }
+                  return null;
+              });
+            L.Globals["string_length"] = new Func<string, int>((string s) =>
+            {
+                if (string.IsNullOrEmpty(s)) return 0;
+                else return s.Length;
+            });
+
+            L.Globals["real"] = new Func<DynValue, DynValue>((DynValue o) =>
+            {
+                switch (o.Type)
+                {
+                    case DataType.String:
+                        return DynValue.NewNumber((int)o.String[0]);
+                    case DataType.Number:
+                        return DynValue.NewNumber(o.Number);
+                    default:
+                        Debug.Assert(false);
+                        return DynValue.NewNumber(0);
+                }
+            });
+            L.Globals["snd_stop"] = new Action<object>((object o) =>
+            {
+                SoundEffectInstance instance = o as SoundEffectInstance;
+                if (instance != null) instance.Stop();
+                else if (o is string && soundInstances.TryGetValue(o as string,out instance)) instance.Stop();
+            });
+            L.Globals["snd_play"] = new Func<object, SoundEffectInstance>((object o) =>
+            {
+                SoundEffectInstance instance = o as SoundEffectInstance;
+                if (instance == null){
+                    string name = o as string;
+                    if(name != null)
+                    {
+                        if(!soundInstances.TryGetValue(name, out instance))
+                        {
+                            SoundEffect effect = FindUndertaleSound(name);
+                            instance = effect.CreateInstance();
+                            soundInstances[name] = instance;
+                        }
+                    }
+                }
+                instance.Play();
+                return instance;
+            });
+
+            if (remoteDebugger == null)
+            {
+                remoteDebugger = new RemoteDebuggerService();
+
+                // the last boolean is to specify if the script is free to run 
+                // after attachment, defaults to false
+                remoteDebugger.Attach(script, "Description of the script", true);
+            }
+
+            // start the web-browser at the correct url. Replace this or just
+            // pass the url to the user in some way.
+          //  Process.Start(remoteDebugger.HttpUrlStringLocalHost);
+        }
+        public static ScriptFunctionDelegate GetDelegate(string function)
+        {
+            try
+            {
+                L.DoFile(ScriptPath + function + ".lua");
+                return Global.L.Globals.Get(function).Function.GetDelegate();
+            }
+            catch (ScriptRuntimeException ex)
+            {
+                Console.WriteLine("Doh! An error occured! {0}", ex.DecoratedMessage);
+            }
+            return null;
+        }
+        public static Table CreateNewSelf()
+        {
+            Table self = new Table(Global.L);
+            Global.L.Globals.Get("SCR_SELFSETUP").Function.GetDelegate()(self);
+            return self;
+        }
+        public static object CallFunction(string function, params object[] parm)
+        {
+            try
+            {
+                ScriptFunctionDelegate del = Global.L.Globals.Get(function).Function.GetDelegate();
+                if (parm.Length == 0) return del();
+                else return del(parm);
+            }
+            catch (ScriptRuntimeException ex)
+            {
+                Console.WriteLine("Doh! An error occured! {0}", ex.DecoratedMessage);
+            }
+            return null;
+        }
+        public static void DebugRunDelegate(string function, Table self)
+        {
+
+            try
+            {
+                L.DoFile(ScriptPath + function + ".lua");
+                var del =  Global.L.Globals.Get(function).Function.GetDelegate();
+                del(self);
+            }
+            catch (ScriptRuntimeException ex)
+            {
+                Console.WriteLine("Doh! An error occured! {0}", ex.DecoratedMessage);
+            }
+        }
+        public static DynValue DoFile(string filename)
+        {
+            
+         //   Global.G.DoChunk(ScriptPath + filename, new KeyValuePair<string, object>("self", self));
+            try
+            {
+                return L.DoFile(ScriptPath + filename);
+            }
+            catch (ScriptRuntimeException ex)
+            {
+                Console.WriteLine("Doh! An error occured! {0}", ex.DecoratedMessage);
+            }
+            return null;
+        }
+       
+        public static int[] Flag = new int[512];
         public static string CharName = "Frisk";
         public static int CurrentRoom = 0;
         public static int Facing = 0;

@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+//using Neo.IronLua;
+using MoonSharp.Interpreter;
+using System.Diagnostics;
 
 namespace MonoUndertale
 {
@@ -14,6 +17,7 @@ namespace MonoUndertale
 
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
+        GameObject obj_writer;
         Camera2D camera;
         Room test;
         Sprite chara;
@@ -22,6 +26,7 @@ namespace MonoUndertale
         Vector2 mousePos;
         List<GameObject> mouseOverObjects = new List<GameObject>();
         List<Room.Tile> drawables = new List<Room.Tile>();
+
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
@@ -34,6 +39,10 @@ namespace MonoUndertale
         /// related content.  Calling base.Initialize will enumerate through any components
         /// and initialize them as well.
         /// </summary>
+        /// 
+        SpriteFont currentFont=null;
+        Color currentFontColor = Color.White;
+        Random random = new Random();
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
@@ -44,6 +53,48 @@ namespace MonoUndertale
                        Width / 2,
                                     graphics.GraphicsDevice.Viewport.
                                     Height / 2);
+
+            Global.StartUpLua();
+            Global.DoFile("scr_gamestart.lua");
+            Global.DoFile("scr_text.lua");
+            //  var chunk = L.CompileChunk(ProgramSource, "test.lua", new LuaCompileOptions() { DebugEngine = LuaStackTraceDebugger.Default }); // compile the script with debug informations, that is needed for a complete stack trace
+       
+            //  DG.dochunk(test);
+            // G.DoChunk(test);
+            Global.L.Globals["draw_set_font"] = new Action<DynValue>((DynValue o) =>
+            {
+                if(o.Type == DataType.Number)
+                {
+
+                }
+                currentFont = Content.Load<SpriteFont>("fnt_main");
+            });
+            Global.L.Globals["random"] = new Func<int,int>((int i) =>
+            {
+                return random.Next(i);
+            });
+           Global.L.Globals["draw_text_color"] = new Action<DynValue>((DynValue o) =>
+            {
+                currentFontColor.PackedValue = (uint)o.Number;
+            });
+            Global.L.Globals["draw_set_color"] = new Action<DynValue>((DynValue o) =>
+            {
+                currentFontColor.PackedValue = (uint)o.Number;
+            });
+            Global.L.Globals["draw_text"] = new Action<float,float,string>((float x, float y, string s) =>
+            {
+                if (currentFont == null) return;
+                if (s == null) return;
+                spriteBatch.DrawString(currentFont, s, new Vector2(x, y), currentFontColor);
+               // draw_set_font(self.myfont)
+
+              //  draw_set_color(self.mycolor)
+            });
+            Global.L.Globals["draw_text_ext"] = new Action<object>((object o) =>
+            {
+
+            });
+            
 
             camera = new Camera2D();
             camera.Initialize(graphics.GraphicsDevice);
@@ -57,6 +108,7 @@ namespace MonoUndertale
         /// LoadContent will be called once per game and is the place to load
         /// all of your content.
         /// </summary>
+
         protected override void LoadContent()
         {
             // Create a new SpriteBatch, which can be used to draw textures.
@@ -73,11 +125,12 @@ namespace MonoUndertale
 
             sr.Close(); // Shouldn't need anymore
            test = new Room(room_index); // "room_ruins3");
-          //  test = new Room("room_ruins3"); // "room_ruins3");
-                                         // test = new Room(306);  //   306 battle room
-                                         //  chara = Sprite.LoadUndertaleSprite(1042);
-                                         //  camera.Focus = chara;
-                                         //   chara.Position = new Vector2( 50,100);
+                                        //  test = new Room("room_ruins3"); // "room_ruins3");
+                                        // test = new Room(306);  //   306 battle room
+                                        //  chara = Sprite.LoadUndertaleSprite(1042);
+                                        //  camera.Focus = chara;
+                                        //   chara.Position = new Vector2( 50,100);
+           
         }
 
         /// <summary>
@@ -98,7 +151,8 @@ namespace MonoUndertale
         protected override void Update(GameTime gameTime)
         {
             camera.Update(gameTime);
-            if(test != null) test.Update(gameTime);
+            if (test != null) test.Update(gameTime);
+
 
             MouseState mstate = Mouse.GetState();
             if(leftButtonUp != mstate.LeftButton)
