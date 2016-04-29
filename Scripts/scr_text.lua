@@ -37,25 +37,18 @@ function round (num, idp)
 	return math.floor (num * mult + 0.5) / mult
 end
 
-function create_instance(x,y, name)
-	local self = {}
 
-	self.name = name
-	self.x = x
-	self.y = y
-	self.view_xview = {}
-	self.view_yview = {}
-	for i=0,7 do
-		self.view_xview[i] = 0;
-		self.view_yview[i] = 0;
-	end
-	self.view_current = 0;
-	return self;
-end
 function SCR_NEWLINE(self)
 	self.myx = self.writingx
 	self.myy = self.myy + self.vspacing
 	self.lineno = self.lineno + 1
+end
+function script_execute(name,...)
+	if name == "SCR_NEWLINE" then
+		self.myx = self.writingx
+		self.myy = self.myy + self.vspacing
+		self.lineno = self.lineno + 1
+	end
 end
 
 function SCR_TEXTSETUP(self, font,color,writingx,writingy,writingxend,shake,textspeed,textsound,spacing,vspacing) 
@@ -73,6 +66,12 @@ end
 
 function SCR_TEXTTYPE (self, typer)
 	print("SCR_TEXTTYPE start")
+	local x = self.x
+	local test = self.view_xview[self.view_current] + 290
+	local vcurrent = self.view_current
+	local xview = self.view_xview
+	print("Current: " .. vcurrent)
+	print("xview: " .. xview[0])
 	if typer ~= nil then 
 		global.typer = typer
 	end
@@ -89,7 +88,8 @@ function SCR_TEXTTYPE (self, typer)
 		SCR_TEXTSETUP(self, 2, 16777215, self.x + 20, self.y + 20, self.view_xview[self.view_current] + 290, 0, 1, 101, 8, 18)
 	end
 	if global.typer == 5 then
-		SCR_TEXTSETUP (self, 2, 16777215, self.x + 20, self.y + 20,  self.view_xview[self.view_current] + 290, 0, 1, 95, 8, 18)
+		SCR_TEXTSETUP (self, 2, 16777215, self.x + 20, self.y + 20,  test, 0, 1, 95, 8, 18)
+		--SCR_TEXTSETUP (self, 2, 16777215, self.x + 20, self.y + 20,  self.view_xview[self.view_current] + 290, 0, 1, 95, 8, 18)
 	end
 	if global.typer == 6 then 
 		SCR_TEXTSETUP(self, 4, 0, self.x, self.y, self.x + 200, 0, 1, 97, 9, 20)

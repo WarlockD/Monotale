@@ -12,9 +12,13 @@ namespace MonoUndertale
 {
     public interface IDrawable : IComparable<IDrawable>
     {
+        Vector2 Position { get; set; }
+        Vector2 Size { get; }
         int Depth { get; }
         void Draw(SpriteBatch batch);
     }
+
+
     public class Sprite : IEquatable<Sprite>
     {
 

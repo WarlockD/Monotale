@@ -84,7 +84,7 @@ namespace UndertaleResources
             double sumOfSquaresOfDifferences = entries.Select(c => (c.ChunkSize - average) * (c.ChunkSize - average)).Sum();
             double sd = Math.Sqrt(sumOfSquaresOfDifferences / entries.Count);
 
-            if (((int)sd == 0) && size == (int)Math.Round(average))
+            if (((int) sd == 0) && size == (int) Math.Round(average))
             {// they are all fixed size, so its easy
                 entries.Add(new ChunkEntry(next_offset, next_offset + size, size)); // ChunkLimit should eqal = next_offset + size, but it dosn't have to at this point
                 if (DebugOutput) System.Diagnostics.Debug.WriteLine("This has a Fixed size of {0} after testing {1} entries", size, entriesCount);
@@ -157,7 +157,7 @@ namespace UndertaleResources
         }
         // Must implement GetEnumerator, which returns a new StreamReaderEnumerator.
         public IEnumerator<ChunkEntry> GetEnumerator() { return new ChunkEntriesEnumerator(cs, entries); }
-        IEnumerator IEnumerable.GetEnumerator() { return (IEnumerator)this; }
+        IEnumerator IEnumerable.GetEnumerator() { return (IEnumerator) this; }
     }
     // http://stackoverflow.com/questions/31078598/c-sharp-create-a-filestream-with-an-offset
     // This class saved me for a workaround for reading a bitmap out of an exisiting file
@@ -364,8 +364,8 @@ namespace UndertaleResources
         public ChunkStream(Stream s, Encoding e, bool leaveOpen) : base(s, e, leaveOpen) { DebugPosition = false; ChunkData = null; }
         public ChunkStream(byte[] chunk) : base(new MemoryStream(chunk, false)) { DebugPosition = false; ChunkData = chunk; }
         public bool DebugPosition { get; set; }
-        public int Position { get { return (int)BaseStream.Position; } set { BaseStream.Position = value; } }
-        public int Length { get { return (int)BaseStream.Length; } }
+        public int Position { get { return (int) BaseStream.Position; } set { BaseStream.Position = value; } }
+        public int Length { get { return (int) BaseStream.Length; } }
 
         public Stream StreamFromPosition()
         {
@@ -396,7 +396,7 @@ namespace UndertaleResources
         public ChunkStream readChunk(int chunkStart, int chunkEnd)
         {
             PushSeek(chunkStart);
-            byte[] data = ReadBytes((int)(chunkEnd - chunkStart));
+            byte[] data = ReadBytes((int) (chunkEnd - chunkStart));
             PopPosition();
             return new ChunkStream(data);
         }
@@ -526,6 +526,109 @@ namespace UndertaleResources
 
     }
     #endregion
+
+
+    public enum GMKeys
+    {
+        vk_unkonwn = -1,
+        vk_nokey = 0,
+        vk_anykey = 1,
+        vk_backspace = 8,
+        vk_tab = 9,
+        vk_enter = 13,
+        vk_shift = 16,
+        vk_ctrl = 17,
+        vk_alt = 18,
+        vk_pause = 19,
+        vk_escape = 27,
+        vk_space = 32,
+        vk_pageup = 33,
+        vk_pagedown = 34,
+        vk_end = 35,
+        vk_home = 36,
+        vk_left = 37,
+        vk_up = 38,
+        vk_right = 39,
+        vk_down = 40,
+        vk_insert = 45,
+        vk_delete = 46,
+        vk_0 = 48, vk_1 = 49,
+        vk_2 = 50,
+        vk_3 = 51,
+        vk_4 = 52,
+        vk_5 = 53,
+        vk_6 = 54,
+        vk_7 = 55,
+        vk_8 = 56,
+        vk_9 = 57,
+        vk_A = 65,
+        vk_B = 66,
+        vk_C = 67,
+        vk_D = 68,
+        vk_E = 69,
+        vk_F = 70,
+        vk_G = 71,
+        vk_H = 72,
+        vk_I = 73,
+        vk_J = 74,
+        vk_K = 75,
+        vk_L = 76,
+        vk_M = 77,
+        vk_N = 78,
+        vk_O = 79,
+        vk_P = 80,
+        vk_Q = 81,
+        vk_R = 82,
+        vk_S = 83,
+        vk_T = 84,
+        vk_U = 85,
+        vk_V = 86,
+        vk_W = 87,
+        vk_X = 88,
+        vk_Y = 89,
+        vk_Z = 90,
+        vk_NUM0 = 96,
+        vk_NUM_1 = 97,
+        vk_NUM_2 = 98,
+        vk_NUM_3 = 99,
+        vk_NUM_4 = 100,
+        vk_NUM_5 = 101,
+        vk_NUM_6 = 102,
+        vk_NUM_7 = 103,
+        vk_NUM_8 = 104,
+        vk_NUM_9 = 105,
+        vk_NUM_STAR = 106,
+        vk_NUM_PLUS = 107,
+        vk_NUM_MINUS = 109,
+        vk_NUM_DOT = 110,
+        vk_NUM_DIV = 111,
+        vk_F1 = 112,
+        vk_F2 = 113,
+        vk_F3 = 114,
+        vk_F4 = 115,
+        vk_F5 = 116,
+        vk_F6 = 117,
+        vk_F7 = 118,
+        vk_F8 = 119,
+        vk_F9 = 120,
+        vk_F10 = 121,
+        vk_F11 = 122,
+        vk_F12 = 123,
+        vk_NUM_LOCK = 144,
+        vk_SCROLL_LOCK = 145,
+        vk_SEMICOLON = 186,
+        vk_PLUS = 187,
+        vk_COMMA = 188,
+        vk_MINUS = 189,
+        vk_FULLSTOP = 190,
+        vk_FWSLASH = 191,
+        vk_AT = 192,
+        vk_RIGHTSQBR = 219,
+        vk_BKSLASH = 220,
+        vk_LEFTSQBR = 221,
+        vk_HASH = 222,
+        vk_TILD = 223,
+    }
     interface NamedResrouce
     {
         string Name { get; }
@@ -771,7 +874,7 @@ namespace UndertaleResources
             public int Height;
             public int Port_X;
             public int Port_Y;
-            public int Oort_Width;
+            public int Port_Width;
             public int Port_Height;
             public int Border_X;
             public int Border_Y;
@@ -789,7 +892,7 @@ namespace UndertaleResources
                 Height = r.ReadInt32();
                 Port_X = r.ReadInt32();
                 Port_Y = r.ReadInt32();
-                Oort_Width = r.ReadInt32();
+                Port_Width = r.ReadInt32();
                 Port_Height = r.ReadInt32();
                 Border_X = r.ReadInt32();
                 Border_Y = r.ReadInt32();
@@ -972,12 +1075,12 @@ namespace UndertaleResources
             Description = r.readStringFromOffset();
             Size = r.ReadInt32();
             Bold = r.readIntBool();
-            Italic = r.readIntBool();;
+            Italic = r.readIntBool(); ;
             int flag = r.ReadInt32();
-            FirstChar = (char)(flag & 0xFFFF);
+            FirstChar = (char) (flag & 0xFFFF);
             CharSet = (flag >> 16) & 0xFF;
             AntiAlias = (flag >> 24) & 0xFF;
-            LastChar = (char)r.ReadInt32();
+            LastChar = (char) r.ReadInt32();
             Frame = new SpriteFrame();
             r.PushSeek(r.ReadInt32());
             Frame.Read(r, -1);
@@ -987,11 +1090,11 @@ namespace UndertaleResources
             Glyphs = UndertaleResrouce.ArrayFromOffset<Glyph>(r);
         }
 
-      
+
     }
     public class RawAudio : FilePosition
     {
-        public int Size { get; private set;  }
+        public int Size { get; private set; }
         public byte[] RawSound { get; private set; }
         internal override void Read(ChunkStream r, int index)
         {
@@ -1003,6 +1106,7 @@ namespace UndertaleResources
     }
     public class UndertaleResrouce
     {
+
         static bool loaded = false;
         static List<string> stringList;
         static List<Texture> textures = new List<Texture>();
@@ -1014,7 +1118,7 @@ namespace UndertaleResources
         static List<RawAudio> rawAudio = new List<RawAudio>();
         static List<Font> fonts = new List<Font>();
 
-        
+
         static Dictionary<string, FilePosition> namedResourceLookup = new Dictionary<string, FilePosition>();
 
         public static IReadOnlyList<Texture> Textures { get { return textures; } }
@@ -1170,7 +1274,7 @@ namespace UndertaleResources
             {
                 for (int i = 0; i < fonts.Count; i++)
                 {
-                    var o = fonts[i]; 
+                    var o = fonts[i];
                     sr.Write("{0,-4}: Name: {1,-20} Description: {2,-20} Size: {3,-4}", i, o.Name, o.Description, o.Size);
                     sr.Write(" Bold:{0}  Italix:{1} Scale({2},{3})", o.Bold, o.Italic, o.ScaleW, o.ScaleH);
                     sr.WriteLine();
@@ -1230,6 +1334,173 @@ namespace UndertaleResources
         {
             if (loaded) return;
             LoadResrouces(new StreamReader(data_win_filename).BaseStream);
+        }
+        public static Keys ConvertGMKey(int key)
+        {
+            switch (key)
+            {
+                case 0: throw new Exception("No key preseed");
+                case 1: throw new Exception("AnyKey pressed");
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 6:
+                case 7:
+                case 10:
+                case 11:
+                case 12:
+                case 14:
+                case 15:
+                case 20:
+                case 21:
+                case 22:
+                case 23:
+                case 24:
+                case 25:
+                case 26:
+                case 28:
+                case 29:
+                case 30:
+                case 31:
+                case 41:
+                case 42:
+                case 43:
+                case 44:
+                case 47:
+                case 58:
+                case 59:
+                case 60:
+                case 61:
+                case 62:
+                case 63:
+                case 64:
+                case 91:
+                case 92:
+                case 93:
+                case 94:
+                case 95:
+                case 108:
+                case 124:
+                case 125:
+                case 126:
+                case 127:
+                case 128:
+                case 129:
+                case 130:
+                case 131:
+                case 132:
+                case 133:
+                case 134:
+                case 135:
+                case 136:
+                case 137:
+                case 138:
+                case 139:
+                case 140:
+                case 141:
+                case 142:
+                case 143:
+                    throw new Exception("unknown key");
+                case 8: return Keys.Back;
+                case 9: return Keys.Tab;
+                case 13: return Keys.Enter;
+                case 16: return Keys.LeftShift;
+                case 17: return Keys.LeftControl;
+                case 18: return Keys.LeftAlt;
+                case 19: return Keys.Pause;
+                case 27: return Keys.Escape;
+                case 32: return Keys.Space;
+                case 33: return Keys.PageUp;
+                case 34: return Keys.PageDown;
+                case 35: return Keys.End;
+                case 36: return Keys.Home;
+                case 37: return Keys.Left;
+                case 38: return Keys.Up;
+                case 39: return Keys.Right;
+                case 40: return Keys.Down;
+                case 45: return Keys.Insert;
+                case 46: return Keys.Delete;
+                case 48: return Keys.D0;
+                case 49: return Keys.D1;
+                case 50: return Keys.D2;
+                case 51: return Keys.D3;
+                case 52: return Keys.D4;
+                case 53: return Keys.D5;
+                case 54: return Keys.D6;
+                case 55: return Keys.D7;
+                case 56: return Keys.D8;
+                case 57: return Keys.D9;
+                case 65: return Keys.A;
+                case 66: return Keys.B;
+                case 67: return Keys.C;
+                case 68: return Keys.D;
+                case 69: return Keys.E;
+                case 70: return Keys.F;
+                case 71: return Keys.G;
+                case 72: return Keys.H;
+                case 73: return Keys.I;
+                case 74: return Keys.J;
+                case 75: return Keys.K;
+                case 76: return Keys.L;
+                case 77: return Keys.M;
+                case 78: return Keys.N;
+                case 79: return Keys.O;
+                case 80: return Keys.P;
+                case 81: return Keys.Q;
+                case 82: return Keys.R;
+                case 83: return Keys.S;
+                case 84: return Keys.T;
+                case 85: return Keys.U;
+                case 86: return Keys.V;
+                case 87: return Keys.W;
+                case 88: return Keys.X;
+                case 89: return Keys.Y;
+                case 90: return Keys.Z;
+                case 96: return Keys.NumPad0;
+                case 97: return Keys.NumPad1;
+                case 98: return Keys.NumPad2;
+                case 99: return Keys.NumPad3;
+                case 100: return Keys.NumPad4;
+                case 101: return Keys.NumPad5;
+                case 102: return Keys.NumPad6;
+                case 103: return Keys.NumPad7;
+                case 104: return Keys.NumPad8;
+                case 105: return Keys.NumPad9;
+                case 106: return Keys.Multiply;
+                case 107: return Keys.OemPlus;
+                case 109: return Keys.OemMinus;// number pad;
+                case 110: return Keys.OemPeriod;
+                case 111: return Keys.Divide;
+                case 112: return Keys.F1;
+                case 113: return Keys.F2;
+                case 114: return Keys.F3;
+                case 115: return Keys.F4;
+                case 116: return Keys.F5;
+                case 117: return Keys.F6;
+                case 118: return Keys.F7;
+                case 119: return Keys.F8;
+                case 120: return Keys.F9;
+                case 121: return Keys.F10;
+                case 122: return Keys.F11;
+                case 123: return Keys.F12;
+                case 144: return Keys.NumLock;
+                case 145: return Keys.Scroll;
+                case 186: return Keys.OemSemicolon;
+                case 187: return Keys.OemPlus;
+                case 188: return Keys.OemComma;
+                case 189: return Keys.OemMinus;
+                //   case 190: return Keys.FULLSTOP;
+                case 191: return Keys.Divide;
+                case 192: return Keys.OemBackslash;
+                case 219: return Keys.OemCloseBrackets; ;
+                case 220: return Keys.OemBackslash;
+                case 221: return Keys.OemOpenBrackets; 
+                //  case 222: return Keys.Hash
+                case 223: return Keys.OemTilde;
+                default:
+                    throw new Exception("Unkonwn key");
+            }
         }
     }
 }

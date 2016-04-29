@@ -10,12 +10,17 @@ using UndertaleResources;
 
 namespace MonoUndertale
 {
-   
-    class Room
+ 
+    public class RoomView
+    {
+
+    }  
+    public class Room 
     {
         public class Tile : IDrawable
         {
-            public Vector2 Position = Vector2.Zero;
+            public Vector2 Position { get; set; }
+            public Vector2 Size { get { return new Vector2(Frame.Origin.X, Frame.Origin.Y); } }
             public Sprite.Frame Frame;
             public int Depth { get; set;  }
             public Vector2 Speed = new Vector2(0.0f, 0.0f);
@@ -37,6 +42,47 @@ namespace MonoUndertale
         }
         float _next_frame = -1;
         public float UpdatesPerSecond = 30.0f;
+        public StupidArray xview = new StupidArray();
+        public StupidArray yview = new StupidArray();
+        public int current_view=1;
+        public GameObject CreateInstance(float x, float y, int index)
+        {
+
+            UndertaleResources.UObject uobj = UndertaleResources.UndertaleResrouce.Objects[index];
+            GameObject o =  GameObject.CreateInstance(uobj, x, y);
+            _objects.Add(o);
+            o.Room = this;
+            return o;
+        }
+        public GameObject CreateInstance(float x, float y, string name)
+        {
+            UndertaleResources.UObject uobj;
+            if (!UndertaleResources.UndertaleResrouce.TryGetResource(name, out uobj)) return null;
+            GameObject o = GameObject.CreateInstance(uobj, x, y);
+            _objects.Add(o);
+            o.Room = this;
+            return o;
+        }
+        public bool InstanceExists(string name)
+        {
+            return _objects.Exists(x => x.Name == name);
+        }
+        public void DestoryInstance(GameObject o)
+        {
+            if(o != null)
+            {
+                o.Room = null;
+                _objects.Remove(o);
+            }
+        }
+        public void DestoryInstance(int objectIndex)
+        {
+            DestoryInstance(_objects.SingleOrDefault(x => x.Index == objectIndex));
+        }
+        public void DestoryInstance(string objectName)
+        {
+            DestoryInstance(_objects.SingleOrDefault(x => x.Name == objectName));
+        }
         bool CheckFrame(GameTime theGameTime)
         {
             float current = (float)theGameTime.TotalGameTime.TotalSeconds;
@@ -49,7 +95,10 @@ namespace MonoUndertale
         }
         public string Name { get; private set; }
         public int RoomIndex { get; private set; }
-        public Rectangle BondingBox;
+        Vector2 _position = Vector2.Zero;
+        Vector2 _size = Vector2.Zero;
+        public Vector2 Position { get { return _position; } set { _position = value; } }
+        public Vector2 Size { get { return _size; } }
         Tile[] _tiles;
         Tile[] _backgrounds;
         Tile[] _foregrounds;
@@ -74,8 +123,9 @@ namespace MonoUndertale
         {
             this.RoomIndex = rawRoom.Index;
             this.Name = rawRoom.Name;
-            BondingBox.Location = Point.Zero;
-            BondingBox.Size = new Point(rawRoom.Width, rawRoom.Height);
+            Global.CurrentRoom = this;
+            _position = Vector2.Zero;
+            _size = new Vector2(rawRoom.Width, rawRoom.Height);
             _backgroundColor = new Color((byte)(rawRoom.Colour>>16), (byte)(rawRoom.Colour>>8),(byte)rawRoom.Colour);
             List<Tile> backgrounds = new List<Tile>();
             List<Tile> foregrounds = new List<Tile>();
@@ -144,8 +194,7 @@ namespace MonoUndertale
             {
                 if (oo.Index > 0)
                 {
-                    GameObject o = GameObject.CreateInstance(oo.ObjectIndex, oo.X, oo.Y);
-                   
+                    GameObject o = this.CreateInstance(oo.X, oo.Y, oo.ObjectIndex);
                     o.Direction = oo.Rotation;
                     o.ScaleVector = new Vector2(oo.Scale_X, oo.Scale_Y);
                     o.Color.PackedValue = (uint)oo.Colour;
@@ -155,10 +204,9 @@ namespace MonoUndertale
                     }
                     if (o.Width > 2000 || o.Height > 2000) throw new Exception("Uhg");
                     //  oo.Colour hummm
-                    _objects.Add(o);
                 }
             }
-            _objects.Sort();
+          
 
             using (var s = new System.IO.StreamWriter("debug_room_objects.txt"))
             {
@@ -178,11 +226,8 @@ namespace MonoUndertale
         GameObject obj_writer;
         public Room(int index)
         {
-           
             LoadRoom(UndertaleResrouce.RoomAtIndex(index));
-            obj_writer = GameObject.CreateInstance("OBJ_WRITER", 100, 100);
-            _objects.Add(obj_writer);
-
+            obj_writer = this.CreateInstance(100, 100, "OBJ_WRITER");
         }
         public bool Update(GameTime time)
         {
@@ -209,7 +254,7 @@ namespace MonoUndertale
 
         public void Draw(SpriteBatch batch)
         {
-            Global.DrawRectangle(batch, BondingBox, this._backgroundColor);
+            Global.DrawRectangle(batch, new Rectangle(Position.ToPoint(),Size.ToPoint()), this._backgroundColor);
             if(DrawBackground) foreach(var b in _backgrounds) b.Draw(batch);
             if (_drawList == null) _drawList = new List<IDrawable>(100);
             else _drawList.Clear();

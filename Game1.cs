@@ -26,7 +26,7 @@ namespace MonoUndertale
         Vector2 mousePos;
         List<GameObject> mouseOverObjects = new List<GameObject>();
         List<Room.Tile> drawables = new List<Room.Tile>();
-
+        Dictionary<int, SpriteFont> Fonts = new Dictionary<int, SpriteFont>();
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
@@ -54,34 +54,46 @@ namespace MonoUndertale
                                     graphics.GraphicsDevice.Viewport.
                                     Height / 2);
 
-            Global.StartUpLua();
-            Global.DoFile("scr_gamestart.lua");
-            Global.DoFile("scr_text.lua");
+            UndertaleScript.StartUpLua();
+            UndertaleScript.DoFile("scr_gamestart.lua");
+            UndertaleScript.DoFile("scr_text.lua");
+            UndertaleScript.DoFile("gameobject.lua");
             //  var chunk = L.CompileChunk(ProgramSource, "test.lua", new LuaCompileOptions() { DebugEngine = LuaStackTraceDebugger.Default }); // compile the script with debug informations, that is needed for a complete stack trace
-       
+
             //  DG.dochunk(test);
             // G.DoChunk(test);
-            Global.L.Globals["draw_set_font"] = new Action<DynValue>((DynValue o) =>
+            Fonts[0] = Content.Load<SpriteFont>("fnt_wingdings");
+            Fonts[1] = Content.Load<SpriteFont>("fnt_main");
+            Fonts[2] = Content.Load<SpriteFont>("fnt_maintext");
+            Fonts[3] = Content.Load<SpriteFont>("fnt_small");
+         //   Fonts[4] = Content.Load<SpriteFont>("fnt_plain");
+         //   Fonts[5] = Content.Load<SpriteFont>("fnt_plainbig");
+            Fonts[6] = Content.Load<SpriteFont>("fnt_curs");
+            Fonts[8] = Content.Load<SpriteFont>("fnt_comicsans");
+          //  Fonts[9] = Content.Load<SpriteFont>("fnt_papyrus");
+            Fonts[10] = Content.Load<SpriteFont>("fnt_maintext_2");
+        
+            UndertaleScript.L.Globals["draw_set_font"] = new Action<DynValue>((DynValue o) =>
             {
                 if(o.Type == DataType.Number)
                 {
-
+                    currentFont = Fonts[(int) o.Number];
                 }
-                currentFont = Content.Load<SpriteFont>("fnt_main");
+               
             });
-            Global.L.Globals["random"] = new Func<int,int>((int i) =>
+            UndertaleScript.L.Globals["random"] = new Func<int,int>((int i) =>
             {
                 return random.Next(i);
             });
-           Global.L.Globals["draw_text_color"] = new Action<DynValue>((DynValue o) =>
+            UndertaleScript.L.Globals["draw_text_color"] = new Action<DynValue>((DynValue o) =>
             {
                 currentFontColor.PackedValue = (uint)o.Number;
             });
-            Global.L.Globals["draw_set_color"] = new Action<DynValue>((DynValue o) =>
+            UndertaleScript.L.Globals["draw_set_color"] = new Action<DynValue>((DynValue o) =>
             {
                 currentFontColor.PackedValue = (uint)o.Number;
             });
-            Global.L.Globals["draw_text"] = new Action<float,float,string>((float x, float y, string s) =>
+            UndertaleScript.L.Globals["draw_text"] = new Action<float,float,string>((float x, float y, string s) =>
             {
                 if (currentFont == null) return;
                 if (s == null) return;
@@ -90,20 +102,37 @@ namespace MonoUndertale
 
               //  draw_set_color(self.mycolor)
             });
-            Global.L.Globals["draw_text_ext"] = new Action<object>((object o) =>
+            UndertaleScript.L.Globals["draw_text_ext"] = new Action<object>((object o) =>
             {
-
+                Debug.WriteLine("draw_text_ext");
             });
-            
-
+            UndertaleScript.L.Globals["draw_sprite"] = new Action<int,int,float,float>((int spriteIndex, int subimg, float x, float y) =>
+            {
+                Sprite sprite = Sprite.LoadSprite(spriteIndex);
+                Sprite.Frame f = sprite.Frames[subimg % sprite.Frames.Length];
+                spriteBatch.Draw(f.Texture, new Vector2(x, y), f.Origin, Color.White);
+                Debug.WriteLine("draw_text_ext");
+            });
+            UndertaleScript.L.Globals["draw_sprite_ext"] = new Action<int, int, float, float,float,float,float,int,float>(
+                (int spriteIndex, int subimg, float x, float y, float xscale, float yscale, float rot, int color, float alpha) =>
+            {
+                Sprite sprite = Sprite.LoadSprite(spriteIndex);
+                Sprite.Frame f = sprite.Frames[subimg % sprite.Frames.Length];
+                Color c = new Color();
+                c.PackedValue = (uint) color;
+                c = new Color(c, alpha);
+                spriteBatch.Draw(f.Texture, new Vector2(x, y), null, f.Origin, null, rot, new Vector2(xscale, yscale), c);
+                Debug.WriteLine("draw_text_ext");
+            });
             camera = new Camera2D();
             camera.Initialize(graphics.GraphicsDevice);
             base.Initialize();
         }
         //int room_index = 34; //306 battle room
         int room_index = 306;
-        const string data_win_filename = @"C:\Undertale\UndertaleOld\data.win";
-        //  const string data_win_filename = @"D:\Old Undertale\files\data.win";
+      //  const string data_win_filename = @"C:\Undertale\UndertaleOld\data.win";
+      //  D:\UndertaleHacking
+          const string data_win_filename = @"D:\Old Undertale\files\data.win";
         /// <summary>
         /// LoadContent will be called once per game and is the place to load
         /// all of your content.

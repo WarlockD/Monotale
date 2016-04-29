@@ -42,6 +42,8 @@
     <Compile Include="Game1.cs" />
     <Compile Include="GameObject.cs" />
     <Compile Include="Global.cs" />
+    <Compile Include="LuaGlobal.cs" />
+    <Compile Include="obj_choicer.cs" />
     <Compile Include="obj_mainchara.cs" />
     <Compile Include="obj_writer.cs" />
     <Compile Include="Program.cs" />
@@ -56,20 +58,12 @@
       <HintPath>$(MonoGameInstallDirectory)\MonoGame\v3.0\Assemblies\Windows\MonoGame.Framework.dll</HintPath>
     </Reference>
     <Reference Include="MoonSharp.Interpreter, Version=1.5.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>packages\MoonSharp.1.5.0.1\lib\net40-client\MoonSharp.Interpreter.dll</HintPath>
-      <Private>True</Private>
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\moonsharp\interpreter\net40\MoonSharp.Interpreter.dll</HintPath>
     </Reference>
     <Reference Include="MoonSharp.RemoteDebugger, Version=1.5.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>packages\MoonSharp.Debugger.1.5.0.1\lib\net40-client\MoonSharp.RemoteDebugger.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Neo.Lua, Version=5.3.0.0, Culture=neutral, PublicKeyToken=fdb0cd4fe8a6e3b2, processorArchitecture=MSIL">
-      <HintPath>packages\NeoLua.1.2.5\lib\net45\Neo.Lua.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Neo.Lua.Desktop, Version=5.3.0.0, Culture=neutral, PublicKeyToken=fdb0cd4fe8a6e3b2, processorArchitecture=MSIL">
-      <HintPath>packages\NeoLua.1.2.5\lib\net45\Neo.Lua.Desktop.dll</HintPath>
-      <Private>True</Private>
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\moonsharp\remotedebugger\net40\MoonSharp.RemoteDebugger.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Xml" />
@@ -81,10 +75,17 @@
     <MonoGameContentReference Include="Content\Content.mgcb" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="fonts\8bitoperator_jve.ttf" />
+    <None Include="fonts\ComicSansMSRegular.ttf" />
+    <None Include="fonts\CryptOfTomorrow.ttf" />
+    <None Include="fonts\hachicro.TTF" />
+    <None Include="fonts\Mars Needs Cunnilingus.ttf" />
     <None Include="packages.config" />
+    <None Include="Scripts\gameobject.lua" />
     <None Include="Scripts\gml_Object_OBJ_WRITER_Alarm_0.lua" />
     <None Include="Scripts\gml_Object_OBJ_WRITER_Create_0.lua" />
     <None Include="Scripts\gml_Object_OBJ_WRITER_Draw_0.lua" />
+    <None Include="Scripts\gml_Object_OBJ_WRITER_Step_0.lua" />
     <None Include="Scripts\gml_Object_OBJ_WRITER_Step_1.lua" />
     <None Include="Scripts\scr_gamestart.lua" />
     <None Include="Scripts\scr_text.lua" />

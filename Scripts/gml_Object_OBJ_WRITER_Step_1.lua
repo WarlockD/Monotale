@@ -10,6 +10,6 @@
 	end
 	if (self.halt == 3) or (self.dfy == 1) then
 		print("instance_destroy()")
-		instance_destroy()
+		instance_destroy(self)
 	end
 end

@@ -1,4 +1,13 @@
 ﻿function gml_Object_OBJ_WRITER_Draw_0(self)
+	function script_execute(name,...)
+		if name == "SCR_NEWLINE" then
+			self.myx = self.writingx
+			self.myy = self.myy + self.vspacing
+			self.lineno = self.lineno + 1
+		end
+	end
+
+
 	self.myx = self.writingx
 	self.myy = self.writingy
 	self.n = 1
@@ -48,6 +57,7 @@
 			end
 			if (string_char_at(self.originalstring, self.n + 1) == "C") and (global.inbattle == 0) then 
 				if instance_exists("obj_choicer") == 0 then 
+					print("Creating choicer")
 					self.choicer = instance_create(0, 0, "obj_choicer")
 				end
 				self.choicer.creator = self.id
@@ -104,7 +114,7 @@
 				if self.newtyper == "R" then 
 					global.typer = 76
 				end
-				script_execute("SCR_TEXTTYPE", global.typer)
+				SCR_TEXTTYPE(self, global.typer)
 				global.facechange = 1
 				self.n = self.n + 1
 			end
@@ -136,7 +146,7 @@
 		else
 			if string_char_at(self.originalstring, self.n) == "%" then 
 				if string_char_at(self.originalstring, self.n + 1) == "%" then 
-					instance_destroy()
+					instance_destroy(self)
 					break
 				else
 					self.stringpos = 1
@@ -151,7 +161,8 @@
 				end
 			else
 				if self.myx > self.writingxend then 
-					script_execute("SCR_NEWLINE")
+					SCR_NEWLINE(self)
+					--script_execute("SCR_NEWLINE")
 				end
 				self.myletter = string_char_at(self.originalstring, self.n)
 				if global.typer == 18 then 

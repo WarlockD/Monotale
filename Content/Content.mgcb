@@ -37,3 +37,33 @@
 /processorParam:TextureFormat=Compressed
 /build:fnt_maintext.spritefont
 
+#begin fnt_small.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:TextureFormat=Compressed
+/build:fnt_small.spritefont
+
+#begin fnt_dmg.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:TextureFormat=Compressed
+/build:fnt_dmg.spritefont
+
+#begin fnt_curs.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:TextureFormat=Compressed
+/build:fnt_curs.spritefont
+
+#begin fnt_comicsans.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:TextureFormat=Compressed
+/build:fnt_comicsans.spritefont
+
+#begin fnt_maintext_2.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:TextureFormat=Compressed
+/build:fnt_maintext_2.spritefont
+

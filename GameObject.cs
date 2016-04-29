@@ -8,13 +8,34 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Diagnostics;
 using MoonSharp.Interpreter;
+using MoonSharp.Interpreter.Interop;
 
 namespace MonoUndertale
 {
-    public class GameObject : IDrawable
+    [MoonSharpUserData]
+    public class StupidArray 
     {
-        [MoonSharpUserData]
-        class AlarmIndexer
+        Dictionary<int, int> array = new Dictionary<int, int>();
+
+        public int this[int i]
+        {
+            get
+            {
+                int v;
+                if (@array.TryGetValue(i, out v)) array[i] = v = 0;
+                return v;
+            }
+            set
+            {
+
+                array[i] = value;
+            }
+        }
+    }
+    public class GameObject :  IUserDataType, IDrawable
+    {
+
+        public class AlarmIndexer : IUserDataType
         {
             [MoonSharp.Interpreter.Interop.MoonSharpVisible(false)]
             int[] alarm = new int[] { -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -27,7 +48,7 @@ namespace MonoUndertale
                 set { alarm[idx] = value; }
             }
             [MoonSharp.Interpreter.Interop.MoonSharpVisible(false)]
-            public void Tick(Table self)
+            public void Tick(GameObject self)
             {
                 for (int i = 0; i < alarm.Length; i++)
                 {
@@ -42,9 +63,106 @@ namespace MonoUndertale
                     }
                 }
             }
+           
+            public DynValue Index(Script script, DynValue index, bool isDirectIndexing)
+            {
+                if (!isDirectIndexing && index.Type == DataType.Number)
+                {
+                    return DynValue.NewNumber( alarm[(int) index.Number]);
+                }
+                throw new NotImplementedException();
+            }
+
+            public bool SetIndex(Script script, DynValue index, DynValue value, bool isDirectIndexing)
+            {
+                if (!isDirectIndexing && index.Type == DataType.Number && value.Type == DataType.Number)
+                {
+                    alarm[(int) index.Number] = (int) value.Number;
+                    return true;
+                }
+                throw new NotImplementedException();
+                return false;
+            }
+
+            public DynValue MetaIndex(Script script, string metaname)
+            {
+                return null; // nothing else is supported
+            }
         }
-        Table self;
-        static GameObject CreateInstance(UndertaleResources.UObject uobj, float x, float y)
+        Dictionary<string, DynValue> self = new Dictionary<string, DynValue>();
+        static readonly Dictionary<string, Func<GameObject, DynValue>> objectIndexers = new Dictionary<string, Func<GameObject, DynValue>>();
+        static readonly Dictionary<string, Action<GameObject, DynValue>> obectAssigners = new Dictionary<string, Action<GameObject, DynValue>>();
+        static GameObject()
+        {
+            objectIndexers["x"] = (GameObject o)=>   DynValue.NewNumber(o.X);
+            objectIndexers["y"] = (GameObject o) => DynValue.NewNumber(o.Y);
+            objectIndexers["hspeed"] = (GameObject o) => DynValue.NewNumber(o.HSpeed);
+            objectIndexers["vspeed"] = (GameObject o) => DynValue.NewNumber(o.VSpeed);
+            objectIndexers["direction"] = (GameObject o) => DynValue.NewNumber(o.Direction);
+            objectIndexers["speed"] = (GameObject o) => DynValue.NewNumber(o.Direction);
+            objectIndexers["depth"] = (GameObject o) => DynValue.NewNumber(o.Depth);
+            objectIndexers["alarm"] = (GameObject o) => UserData.Create(o.Alarms);
+            objectIndexers["view_current"] = (GameObject o) => DynValue.NewNumber(Global.CurrentRoom.current_view);
+        //    objectIndexers["view_xview"] = (GameObject o) => UserData.Create(Global.CurrentRoom.xview);
+         //   objectIndexers["view_yview"] = (GameObject o) => UserData.Create(Global.CurrentRoom.yview);
+
+            obectAssigners["x"] = (GameObject o, DynValue v) => o.X = (float)v.Number;
+            obectAssigners["y"] = (GameObject o, DynValue v) => o.Y = (float)v.Number;
+            obectAssigners["hspeed"] = (GameObject o, DynValue v) => o.HSpeed = (float) v.Number;
+            obectAssigners["vspeed"] = (GameObject o, DynValue v) => o.VSpeed = (float) v.Number;
+            obectAssigners["direction"] = (GameObject o, DynValue v) => o.Direction = (float) v.Number;
+            obectAssigners["speed"] = (GameObject o, DynValue v) => o.Speed = (float) v.Number;
+            obectAssigners["depth"] = (GameObject o, DynValue v) => o.VSpeed = (float) v.Number;
+            obectAssigners["alarm"] = (GameObject o, DynValue v) => Debug.WriteLine("alarm was being set?");
+            obectAssigners["view_current"] = (GameObject o, DynValue v) => Global.CurrentRoom.current_view = (int) v.Number;
+
+            objectIndexers["view_current"] = (GameObject o) => DynValue.NewNumber(Global.CurrentRoom.current_view);
+        }
+        DynValue IUserDataType.Index(Script script, DynValue index, bool isDirectIndexing)
+        {
+
+            if (isDirectIndexing && index.Type == DataType.String)
+            {
+                Func<GameObject, DynValue> func;
+                if (objectIndexers.TryGetValue(index.String, out func)) return (DynValue) func(this);
+                DynValue v;
+                if (!self.TryGetValue(index.String, out v))
+                { // return a table as at this point it might be an array
+                    
+                    v = DynValue.NewPrimeTable();
+                    // hack here
+                    for (int i = 0; i < 20; i++) v.Table.Set(DynValue.NewNumber(i), DynValue.NewNumber(0));
+                 //   if (index.String == "view_xview")
+                        self[index.String] = v;
+
+                }
+                return v;
+            }
+            throw new NotImplementedException();
+            return null;
+        }
+
+        public bool SetIndex(Script script, DynValue index, DynValue value, bool isDirectIndexing)
+        {
+            Debug.Assert(index.String != "view_xview");
+            if (isDirectIndexing && index.Type == DataType.String)
+            {
+                DynValue v;
+                Action<GameObject, DynValue> func;
+                if (obectAssigners.TryGetValue(index.String, out func))  func(this,value);
+                else
+                    self[index.String] = value;
+                return true;
+            }
+            throw new NotImplementedException();
+            return false;
+        }
+
+        public DynValue MetaIndex(Script script, string metaname)
+        { 
+            throw new NotImplementedException();
+        }
+        public static GameObject CreateInstance(UndertaleResources.UObject uobj, float x, float y)
         {
 
             GameObject o = new GameObject();
@@ -56,49 +174,52 @@ namespace MonoUndertale
             o.Solid = uobj.Solid;
             o.Visible = uobj.Visible;
             o.Persistant = uobj.Persistent; // not sure how to handle this
-            o.Alarms = null;
+            o.Alarms = new AlarmIndexer();
             if (o.Name == "OBJ_WRITER")
             {
-                o.Alarms = new AlarmIndexer();
-                //o.self = Global.CreateNewSelf();
-              //  UserData.RegisterType<AlarmIndexer>();
-                o.self = Global.CallFunction("create_instance", x, y, "OBJ_WRITER") as Table;
-                //  UserData data;
-
-                // o.self.Set("alarm", DynValue.NewTable( o.Alarms)); // ["alarm"] = UserData.Create(o.Alarms);
-                o.self["alarm"] = o.Alarms;
-                Global.DebugRunDelegate("gml_Object_OBJ_WRITER_Create_0", o.self);
-                o.DrawDelegate=  Global.GetDelegate("gml_Object_OBJ_WRITER_Draw_0");
-                o.UpdateDelegate = Global.GetDelegate("gml_Object_OBJ_WRITER_Step_1");
-                o.Alarms.AlarmDelegates[0] = Global.GetDelegate("gml_Object_OBJ_WRITER_Alarm_0");
+                
+                o.DrawDelegate= UndertaleScript.GetDelegate("gml_Object_OBJ_WRITER_Draw_0");
+                o.UpdateDelegate = UndertaleScript.GetDelegate("gml_Object_OBJ_WRITER_Step_1");
+                o.StartUpdateDelegate = UndertaleScript.GetDelegate("gml_Object_OBJ_WRITER_Step_0");
+                o.Alarms.AlarmDelegates[0] = UndertaleScript.GetDelegate("gml_Object_OBJ_WRITER_Alarm_0");
+                UndertaleScript.StartDebugger(UndertaleScript.L,false);
+                UndertaleScript.DebugRunDelegate("gml_Object_OBJ_WRITER_Create_0", UserData.Create(o));
             }
+            o.Create();
             Debug.Assert(!o.Persistant);
             // need to handle mask too
             return o;
         }
-        public static GameObject CreateInstance(int index, int x, int y)
+        protected virtual void Create() { }
+        public GameObject CreateInstance(int x, int y, int index)
         {
-            UndertaleResources.UObject uobj = UndertaleResources.UndertaleResrouce.Objects[index];
-            return CreateInstance(uobj, x, y);
+            return this.Room.CreateInstance(x, y, index);
         }
-        public static GameObject CreateInstance(string name, int x, int y)
+        public GameObject CreateInstance(int x, int y, string name)
         {
-            UndertaleResources.UObject uobj;
-            if (UndertaleResources.UndertaleResrouce.TryGetResource(name, out uobj))
-                return CreateInstance(uobj, x, y);
-            else
-                return null;
+            return this.Room.CreateInstance(x, y, name);
+        }
+        public bool InstanceExists(string name)
+        {
+            return this.Room.InstanceExists(name);
+        }
+        public void DestoryInstance()
+        {
+            this.Room.DestoryInstance(this);
         }
         protected GameObject() { }
-        AlarmIndexer Alarms; 
-      
-        
+        protected AlarmIndexer Alarms;
+
+        ScriptFunctionDelegate StartUpdateDelegate = null;
         ScriptFunctionDelegate UpdateDelegate = null;
         ScriptFunctionDelegate DrawDelegate = null;
         public string Name = null;
         public int Index = -1;
-        public Vector2 Position = Vector2.Zero;
+
+        public Vector2 Position { get { return _position; } set { _position = value; } }
         public Vector2 Size { get { return _size; } }
+        public Room Room = null;
+        
         public int Depth { get; set; }
         public bool Visible = true;
         public bool Solid = false;
@@ -106,20 +227,22 @@ namespace MonoUndertale
         public Color Color = Color.White;
         bool _persistant = false;
         int _currentFrame = 0;
-        int _speed = 0;
+        float _speed = 0;
         float _direction = 0;
         int _image_speed = 0;
         float _scale = 1.0f;
         Vector2 _movementVector = Vector2.Zero;
         int _current_image_time = 0;
+        Vector2 _position = Vector2.Zero;
         Vector2 _size = Vector2.Zero;
         Vector2 _scaleVector = new Vector2(1.0f, 1.0f);
         Sprite _sprite = null;
         public float Scale { get { return ScaleVector.X; } set { ScaleVector = new Vector2(value, value); } }
-        public float X { get { return Position.X; } set { Position.X = value; } }
-        public float Y { get { return Position.Y; } set { Position.Y = value; } }
+        public float X { get { return _position.X; } set { _position.X = value; } }
+        public float Y { get { return _position.Y; } set { _position.Y = value; } }
         public float Width { get { return Size.X; }  }
         public float Height { get { return Size.Y; } }
+      
         public Rectangle BoundingBox { get { return new Rectangle((int)Position.X, (int)Position.Y, (int)(Size.X * ScaleVector.X), (int)(Size.Y * ScaleVector.Y)); } }
         void UpdateObjectSize()
         {
@@ -176,28 +299,49 @@ namespace MonoUndertale
             set
             {
                 _direction = value;
-                setMovementVector();
+                if (_speed == 0.0f) _movementVector = Vector2.Zero;
+                else
+                {
+                    _movementVector.X = (float) Math.Cos(Math.PI * _direction / 180.0) * _speed;
+                    _movementVector.Y = (float) Math.Sin(Math.PI * _direction / 180.0) * _speed;
+                }
             }
         }
-        public int Speed
+        public float Speed
         {
             get { return _speed; }
             set
             {
-                _speed = value;
-                setMovementVector();
+                _speed = value; 
+                if (_speed == 0.0f) _movementVector = Vector2.Zero;
+                else
+                {
+                    _movementVector.X = (float) Math.Cos(Math.PI * _direction / 180.0) * _speed;
+                    _movementVector.Y = (float) Math.Sin(Math.PI * _direction / 180.0) * _speed;
+                }
             }
         }
-     
-        void setMovementVector()
+        public float HSpeed
         {
-            if (_speed == 0) _movementVector = Vector2.Zero;
-            else
+            get { return _movementVector.X; }
+            set
             {
-                _movementVector.X = (float)Math.Cos(Math.PI * _direction / 180.0) * _speed;
-                _movementVector.Y = (float)Math.Sin(Math.PI * _direction / 180.0) * _speed;
+                _movementVector.X = value;
+                _direction = (float) (Math.Atan2((float) _movementVector.X, (float) _movementVector.Y) / Math.PI * 180);
+                _speed = (float) Math.Sqrt(_movementVector.X * _movementVector.X + _movementVector.Y * _movementVector.Y);
             }
         }
+        public float VSpeed
+        {
+            get { return _movementVector.Y; }
+            set
+            {
+                _movementVector.Y = value;
+                _direction = (float) (Math.Atan2((float) _movementVector.X, (float) _movementVector.Y) / Math.PI * 180);
+                _speed = (float)Math.Sqrt(_movementVector.X * _movementVector.X + _movementVector.Y * _movementVector.Y);
+            }
+        }
+
         public int CurrentFrame
         {
             get { return _currentFrame; }
@@ -218,8 +362,15 @@ namespace MonoUndertale
         {
             if (Sprite != null && --_currentFrame < 0) _currentFrame = Sprite.Frames.Length - 1;
         }
-        public virtual void Tick()
+        public virtual void BeginStep() { }
+        public virtual void Step() { }
+        public virtual void EndStep() { }
+
+        public void Tick()
         {
+            BeginStep();
+            if(StartUpdateDelegate != null) StartUpdateDelegate(this);
+
             Position += _movementVector;
             if (_image_speed != 0 && _current_image_time == 0)
             {
@@ -231,25 +382,26 @@ namespace MonoUndertale
                 }
                 else _current_image_time--;
             }
-            if(self != null)
-            {
-                if(Alarms != null)
-                {
-                    Alarms.Tick(self);
-                }
-                if (UpdateDelegate != null) UpdateDelegate(self);
-            }
+            Step();
+            Alarms.Tick(this);
+            if (UpdateDelegate != null) UpdateDelegate(this);
+            
+
+            EndStep();
         }
+        protected virtual void InternalDraw(SpriteBatch batch) { }
         public void Draw(SpriteBatch batch)
         {
             if (Visible)
             {
-                if (DrawDelegate != null) DrawDelegate(self);
+                if (DrawDelegate != null) UndertaleScript.TryDelegate(DrawDelegate,self);
+
                 else if (Sprite != null)
                 {
                     var f = Sprite.Frames[_currentFrame];
                     batch.Draw(f.Texture, Position, null, f.Origin, null, _direction, ScaleVector, Color, SpriteEffects.None);
                 }
+                InternalDraw(batch);
             }
         }
 
@@ -258,6 +410,8 @@ namespace MonoUndertale
         {
             return -Depth.CompareTo(other.Depth);
         }
+
+     
     }
 }
 
