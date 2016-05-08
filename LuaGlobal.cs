@@ -10,6 +10,7 @@ using System.Diagnostics;
 using MoonSharp.Interpreter;
 using MoonSharp.RemoteDebugger;
 using Microsoft.Xna.Framework.Audio;
+using MoonSharp.Interpreter.Loaders;
 //using Neo.IronLua;
 
 
@@ -197,15 +198,41 @@ end
                 Process.Start(remoteDebugger.HttpUrlStringLocalHost);
             }
         }
+        private class MyCustomScriptLoader : ScriptLoaderBase
+        {
+            public override object LoadFile(string file, Table globalContext)
+            {
+                Debug.WriteLine(string.Format("print ([[A request to load '{0}' has been made]])", file));
+                if (System.IO.File.Exists(file)) return System.IO.File.OpenRead(file);
+                if(System.IO.File.Exists(ScriptPath + file)) return System.IO.File.OpenRead(ScriptPath + file);
+                return null;
+            }
+            public override string ResolveModuleName(string modname, Table globalContext)
+            {
+                Debug.WriteLine(string.Format("print ([[A request to load module '{0}' has been made]])", modname));
+                if (!modname.Contains(".lua")) modname += ".lua";
+                if (System.IO.File.Exists(modname)) return modname;
+                else return ScriptPath + modname;
+            }
+            public override bool ScriptFileExists(string name)
+            {
+                if (System.IO.File.Exists(name) || System.IO.File.Exists(ScriptPath + name)) return true;
+                return true;
+            }
+        }
         public static void StartUpLua()
         {
             UserData.RegisterAssembly();
-         //   TestObjecthandling();
-            Script script = new Script();
             UserData.RegisterType<GameObject>();
             UserData.RegisterType<GameObject.AlarmIndexer>();
             UserData.RegisterType<StupidArray>();
+            //   TestObjecthandling();
+            Script script = new Script();
+          //  string[] paths = new string[] { ScriptPath + "/?", ScriptPath + "/?.lua" };
+            script.Options.ScriptLoader = new MyCustomScriptLoader();
+         //   ((ScriptLoaderBase)script.Options.ScriptLoader).ModulePaths= paths;// = new string[] { "MyPath/?", "MyPath/?.lua" };
             
+            // ScriptPath
             L = script;
             global = DynValue.NewPrimeTable();
             L.Globals["global"] = global;

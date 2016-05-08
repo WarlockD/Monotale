@@ -182,7 +182,8 @@ namespace MonoUndertale
                 o.UpdateDelegate = UndertaleScript.GetDelegate("gml_Object_OBJ_WRITER_Step_1");
                 o.StartUpdateDelegate = UndertaleScript.GetDelegate("gml_Object_OBJ_WRITER_Step_0");
                 o.Alarms.AlarmDelegates[0] = UndertaleScript.GetDelegate("gml_Object_OBJ_WRITER_Alarm_0");
-                UndertaleScript.StartDebugger(UndertaleScript.L,false);
+       //         UndertaleScript.StartDebugger(UndertaleScript.L,false);
+                var value = UndertaleScript.L.DoString("return GetSprite('spr_brattyface',0)");
                 UndertaleScript.DebugRunDelegate("gml_Object_OBJ_WRITER_Create_0", UserData.Create(o));
             }
             o.Create();

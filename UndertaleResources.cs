@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.IO;
+using System.CodeDom.Compiler;
 
 namespace UndertaleResources
 {
@@ -745,7 +746,250 @@ namespace UndertaleResources
             SoundIndex = r.ReadInt32();
         }
     }
-    public class SpriteFrame : FilePosition
+    public abstract class LuaObjectBuilder
+    {
+        public string TableName = null;
+        public bool ProcessKeyLikeString = false;
+        public LuaObjectBuilder Parent = null;
+        public static string ValueToString(char v)
+        {
+            switch (v)
+            {
+                case '\a': return "\\a";
+                case '\n': return "\\n";
+                case '\r': return "\\r";
+                case '\t': return "\\t";
+                case '\v': return "\\v";
+                case '\\': return "\\\\";
+                case '\"': return "\\\"";
+                case '\'': return "\\\'";
+              //  case '[': return "\\[";
+             //   case ']': return "\\]";
+                default:
+                    if (char.IsControl(v)) return string.Format("\\{0}", (byte)v);
+                    else return v.ToString();   
+            }
+        }
+        public static string ValueToString(string v)
+        {
+            StringBuilder sb = new StringBuilder();
+            AppendValue(sb, v);
+            return sb.ToString();
+        }
+        public static string ValueToString(LuaObjectBuilder v)
+        {
+            StringBuilder sb = new StringBuilder();
+            AppendValue(sb, v);
+            return sb.ToString();
+        }
+        public static void AppendValue(StringBuilder sb, char v)
+        {
+            sb.Append(ValueToString(v));
+        }
+        public static void AppendValue(TextWriter wr, char v)
+        {
+            wr.Write(ValueToString(v));
+        }
+        public static void AppendValue(StringBuilder sb, string v)
+        {
+            sb.Append('"');
+            foreach (var c in v) AppendValue(sb, c);
+            sb.Append('"');
+        }
+        public static void AppendValue(TextWriter wr, string v)
+        {
+            wr.Write('"');
+            foreach (var c in v) AppendValue(wr, c);
+            wr.Write('"');
+        }
+        public static void AppendValue(StringBuilder sb, LuaObjectBuilder v)
+        {
+            v.ToStringBuilder(sb);
+        }
+        public static void AppendValue(TextWriter wr, LuaObjectBuilder v)
+        {
+            v.ToStringBuilder(wr);
+        }
+        public static void AppendValue(StringBuilder sb, bool v)
+        {
+            sb.Append(v ? "true" : "false");
+        }
+        public static void AppendValue(TextWriter wr, bool v)
+        {
+            wr.Write(v ? "true" : "false");
+        }
+        public static void AppendValue(StringBuilder sb, object v)
+        {
+            if (v is LuaObjectBuilder) AppendValue(sb, v as LuaObjectBuilder);
+            else if (v is string) AppendValue(sb, v as string);
+            else if (v is char)
+            {
+                sb.Append('"');
+                AppendValue(sb, (char)v);
+                sb.Append('"');
+            }
+            else if (v is bool) AppendValue(sb, (bool)v);
+            else sb.Append(v.ToString());
+        }
+        public static void AppendValue(TextWriter wr, object v)
+        {
+            if (v is LuaObjectBuilder) AppendValue(wr, v as LuaObjectBuilder);
+            else if (v is string) AppendValue(wr, v as string);
+            else if (v is char)
+            {
+                wr.Write('"');
+                AppendValue(wr, (char)v);
+                wr.Write('"');
+            }
+            else if (v is bool) AppendValue(wr, (bool)v);
+            else wr.Write(v.ToString());
+        }
+
+        
+        public void AppendSingleEntry(TextWriter wr, KeyValuePair<string, object> v)
+        {
+            if (ProcessKeyLikeString)
+            {
+                wr.Write('[');
+                AppendValue(wr, v.Key);
+                wr.Write(']');
+            }
+            else wr.Write(v.Key);
+            wr.Write(" = ");
+            AppendValue(wr, v.Value);
+        }
+        public void AppendSingleEntry(StringBuilder sb, KeyValuePair<string, object> v)
+        {
+            if (ProcessKeyLikeString)
+            {
+                sb.Append('[');
+                AppendValue(sb, v.Key);
+                sb.Append(']');
+            }
+            else sb.Append(v.Key);
+            sb.Append(" = ");
+            AppendValue(sb, v.Value);
+        }
+        public abstract void ToStringBuilder(StringBuilder sb);
+        public abstract void ToStringBuilder(TextWriter wr);
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            ToStringBuilder(sb);
+            return sb.ToString();
+        }
+    }
+    public interface ILuaObject
+    {
+        LuaObjectBuilder ToLuaStructure();
+    }
+    public class LuaArrayBuilder : LuaObjectBuilder
+    {
+        List<object> list = new List<object>();
+        public bool StartAtOne = false;
+        public void Add<T>(T value)
+        {
+            ILuaObject o = value as ILuaObject;
+            if (o != null)
+                list.Add(o.ToLuaStructure());
+            else
+                list.Add(value);
+        }
+        public override void ToStringBuilder(TextWriter wr)
+        {
+            IndentedTextWriter iwr = wr as IndentedTextWriter;
+            if (iwr == null) iwr = new IndentedTextWriter(wr);
+            iwr.Write('{');
+            // we know we have atleast one
+            if (list.Count > 0)
+            {
+                iwr.Indent++;
+                if(list[0] is LuaObjectBuilder) iwr.WriteLine();
+  
+                AppendValue(iwr, list[0]);
+                for (int i = 1; i < list.Count; i++)
+                {
+                    iwr.Write(", ");
+                    if (list[i] is LuaObjectBuilder) iwr.WriteLine();
+                    AppendValue(iwr, list[i]);
+                }
+                iwr.Write(' ');
+                iwr.Indent--;
+            }
+            iwr.Write("}");
+        }
+        public override void ToStringBuilder(StringBuilder sb)
+        {
+            sb.Append("{");
+            // we know we have atleast one
+            if (list.Count > 0)
+            {
+                sb.Append(' ');
+                AppendValue(sb, list[0]);
+                for (int i = 1; i < list.Count; i++)
+                {
+                    sb.Append(", ");
+                    AppendValue(sb, list[i]);
+                }
+                sb.Append(' ');
+            }
+            sb.Append("}");
+        }
+    }
+    public class LuaTableBuilder : LuaObjectBuilder
+    {
+        List<KeyValuePair<string, object>> Values = new List<KeyValuePair<string, object>>();
+
+        public void Add<T>(string name, T value)
+        {
+            ILuaObject o = value as ILuaObject;
+            if (o != null)
+                Values.Add(new KeyValuePair<string, object>(name, o.ToLuaStructure()));
+            else
+                Values.Add(new KeyValuePair<string, object>(name, value));
+        }
+        public override void ToStringBuilder(TextWriter wr)
+        {
+            IndentedTextWriter iwr = wr as IndentedTextWriter;
+            if (iwr == null) iwr = new IndentedTextWriter(wr);
+            iwr.Write('{');
+            // we know we have atleast one
+            if (Values.Count > 0)
+            {
+                iwr.Indent++;
+                if (Values[0].Value is LuaObjectBuilder) iwr.WriteLine();
+                AppendSingleEntry(iwr, Values[0]);
+                for (int i = 1; i < Values.Count; i++)
+                {
+                    iwr.Write(", ");
+                    if (Values[i].Value is LuaObjectBuilder) iwr.WriteLine();
+                    AppendSingleEntry(iwr, Values[i]);
+                }
+                iwr.Indent--;
+                iwr.Write(' ');
+            }
+            iwr.Write("}");
+        }
+            
+        public override void ToStringBuilder(StringBuilder sb)
+        {
+                sb.Append("{");
+                if (Values.Count > 0)
+                {
+                    // we know we have atleast one
+                    AppendSingleEntry(sb, Values[0]);
+                    for (int i = 1; i < Values.Count; i++)
+                    {
+                        sb.Append(',');
+                        AppendSingleEntry(sb, Values[i]);
+                    }
+                    sb.Append(' ');
+                }
+                sb.Append("}");
+         }
+    }
+    public class SpriteFrame : FilePosition, ILuaObject
     {
         public short X { get; private set; }
         public short Y { get; private set; }
@@ -758,6 +1002,23 @@ namespace UndertaleResources
         public short OriginalWidth { get; private set; }
         public short OriginalHeight { get; private set; }
         public short TextureIndex { get; private set; }
+
+        public LuaObjectBuilder ToLuaStructure()
+        {
+            LuaTableBuilder b = new LuaTableBuilder();
+            b.Add("x", X);
+            b.Add("y", Y);
+            b.Add("width", Width);
+            b.Add("height", Height);
+            b.Add("offsetx", OffsetX);
+            b.Add("offsety", CropHeight);
+            b.Add("texture", TextureIndex);
+            return b;
+        }
+        public override string ToString()
+        {
+            return ToLuaStructure().ToString();
+        }
         internal override void Read(ChunkStream cs, int index)
         {
             Position = cs.Position;
@@ -775,7 +1036,7 @@ namespace UndertaleResources
             TextureIndex = cs.ReadInt16();
         }
     }
-    public class Sprite : FilePosition, NamedResrouce
+    public class Sprite : FilePosition, NamedResrouce, ILuaObject
     {
         public string Name { get; private set; }
         public int Width { get; private set; }
@@ -786,6 +1047,22 @@ namespace UndertaleResources
         public int Another { get; private set; }
         public int[] Extra { get; private set; }
         public SpriteFrame[] Frames { get; private set; }
+        public LuaObjectBuilder ToLuaStructure()
+        {
+            LuaTableBuilder b = new LuaTableBuilder();
+            b.Add("index", Index);
+            b.Add("name", Name);
+            b.Add("width", Width);
+            b.Add("height", Height);
+            LuaArrayBuilder frameArray = new LuaArrayBuilder();
+            foreach (var frame in Frames) frameArray.Add(frame);
+            b.Add("frames", frameArray);
+            return b;
+        }
+        public override string ToString()
+        {
+            return ToLuaStructure().ToString();
+        }
         internal override void Read(ChunkStream r, int index)
         {
             Position = r.Position;
@@ -1029,9 +1306,9 @@ namespace UndertaleResources
             Tiles = UndertaleResrouce.ArrayFromOffset<Tile>(r, tilesOffset);
         }
     }
-    public class Font : FilePosition, NamedResrouce
+    public class Font : FilePosition, NamedResrouce, ILuaObject
     {
-        public class Glyph : FilePosition
+        public class Glyph : FilePosition, ILuaObject
         {
             public short ch;
             public short x;
@@ -1052,6 +1329,18 @@ namespace UndertaleResources
                 shift = r.ReadInt16();
                 offset = r.ReadInt16();
             }
+            public LuaObjectBuilder ToLuaStructure()
+            {
+                LuaTableBuilder b = new LuaTableBuilder();
+                b.Add("ch", (char)ch);
+                b.Add("x", x);
+                b.Add("y", y);
+                b.Add("width", width);
+                b.Add("height", height);
+                b.Add("shift", shift);
+                b.Add("offset", offset);
+                return b;
+            }
         }
         public string Name { get; private set; }
         public string Description { get; private set; }
@@ -1067,6 +1356,26 @@ namespace UndertaleResources
         public float ScaleW { get; private set; }
         public float ScaleH { get; private set; }
         public Glyph[] Glyphs { get; private set; }
+        public LuaObjectBuilder ToLuaStructure()
+        {
+            LuaTableBuilder b = new LuaTableBuilder();
+            b.Add("name", Name);
+            b.Add("description", Description);
+            b.Add("size", Size);
+            b.Add("bold", Bold);
+            b.Add("italic", Italic);
+            b.Add("first", FirstChar);
+            b.Add("last", LastChar);
+            b.Add("anti_alias", AntiAlias);
+            b.Add("charset", CharSet);
+            b.Add("scalew", ScaleW);
+            b.Add("scaleh", ScaleH);
+            b.Add("frame", Frame);
+            LuaTableBuilder glyphs = new LuaTableBuilder() { ProcessKeyLikeString = true , TableName = "glyphs" };
+            foreach (var g in Glyphs) glyphs.Add(((char)g.ch).ToString(), g);
+            b.Add("glyphs", glyphs);
+            return b;
+        }
         internal override void Read(ChunkStream r, int index)
         {
             Position = r.Position;
@@ -1248,6 +1557,43 @@ namespace UndertaleResources
                 }
             }
         }
+        public static void DebugTablePrint<T>(Dictionary<string,object> list, TextWriter w, string tablename) where T : ILuaObject
+        {
+
+        }
+        public static void DebugPrint<T>(List<T> list, TextWriter w, string globalTableName, bool nameLookup = true) where T: ILuaObject
+        {
+            w.WriteLine("-- Start {0} Init", globalTableName);
+            w.WriteLine("{0} = {{}}", globalTableName);
+            string localTableName = "loc_" + globalTableName.Replace('.', '_');
+            w.WriteLine("local {0} = {1}", localTableName, globalTableName);
+            // we set up an index array lookup
+            for (int i = 0; i < list.Count; i++)
+            {
+                var o = list[i];
+                var ls = o.ToLuaStructure();
+                w.Write("{0}[{1,-4}]= ", localTableName, i);
+                ls.ToStringBuilder(w);
+                w.WriteLine();
+
+            }
+            if(nameLookup)
+            {
+                string localMapName = "loc_" + globalTableName + "NameMap";
+                w.WriteLine();
+                w.WriteLine("-- Set up name look up here");
+                w.WriteLine("{0}NameMap = {{}}", globalTableName);
+                w.WriteLine("local {0} = {1}NameMap", localMapName, globalTableName);
+                w.WriteLine("for k, v in ipairs({0}) do", localMapName);
+                w.WriteLine("\tmap[v.name] = v");
+                w.WriteLine("\tif v.index == nil or v.index ~= k then");
+                w.WriteLine("\t\tv.index = k");
+                w.WriteLine("\tend");
+                w.WriteLine("end");
+            }
+            w.WriteLine("-- End {0} Init", globalTableName);
+
+        }
         public static void DebugPring()
         {
             using (StreamWriter sr = new StreamWriter("object_info.txt"))
@@ -1260,25 +1606,13 @@ namespace UndertaleResources
                     sr.WriteLine();
                 }
             }
-            using (StreamWriter sr = new StreamWriter("sprite_info.txt"))
+            using (StreamWriter sr = new StreamWriter("sprite_info.lua"))
             {
-                for (int i = 0; i < sprites.Count; i++)
-                {
-                    var o = sprites[i];
-                    sr.Write("{0,-4}: Name: {1:-20}", i, o.Name);
-                    sr.Write("  Frames: {0}", o.Frames.Length);
-                    sr.WriteLine();
-                }
+                DebugPrint(sprites, sr, "_sprites", true);
             }
-            using (StreamWriter sr = new StreamWriter("font_info.txt"))
+            using (StreamWriter sr = new StreamWriter("font_info.lua"))
             {
-                for (int i = 0; i < fonts.Count; i++)
-                {
-                    var o = fonts[i];
-                    sr.Write("{0,-4}: Name: {1,-20} Description: {2,-20} Size: {3,-4}", i, o.Name, o.Description, o.Size);
-                    sr.Write(" Bold:{0}  Italix:{1} Scale({2},{3})", o.Bold, o.Italic, o.ScaleW, o.ScaleH);
-                    sr.WriteLine();
-                }
+                DebugPrint(fonts, sr, "_fonts", true);
             }
             using (StreamWriter sr = new StreamWriter("room_info.txt"))
             {

@@ -73,6 +73,13 @@ namespace MonoUndertale
             ret.Origin = new Rectangle(frame.X , frame.Y , frame.Width, frame.Height);
             return ret;
         }
+        public static Frame CreateFrame(int texture, Rectangle rect)   
+        {
+            Frame ret = new Frame();
+            ret.Texture = textureCache[texture]; //+frame.OffsetX + frame.OffsetY
+            ret.Origin = rect;
+            return ret;
+        }
         static Sprite CacheSprite(UndertaleResources.Sprite sprite)
         {
             Sprite s = new Sprite();

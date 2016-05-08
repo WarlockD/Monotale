@@ -27,10 +27,15 @@ namespace MonoUndertale
         List<GameObject> mouseOverObjects = new List<GameObject>();
         List<Room.Tile> drawables = new List<Room.Tile>();
         Dictionary<int, SpriteFont> Fonts = new Dictionary<int, SpriteFont>();
+        Dictionary<int, Dictionary<char, Sprite.Frame>> FontSpritesIndex = new Dictionary<int, Dictionary<char, Sprite.Frame>>();
+        Dictionary<string, Dictionary<char, Sprite.Frame>> FontSpritesName = new Dictionary<string, Dictionary<char, Sprite.Frame>>();
+        Dictionary<char, Sprite.Frame> currentFont = null;
+
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
         }
 
         /// <summary>
@@ -40,9 +45,18 @@ namespace MonoUndertale
         /// and initialize them as well.
         /// </summary>
         /// 
-        SpriteFont currentFont=null;
+        
         Color currentFontColor = Color.White;
         Random random = new Random();
+        static Rectangle ReadRectangle(Table t)
+        {
+            Rectangle rect = new Rectangle();
+            rect.X = (int)(double)t["x"];
+            rect.Y = (int)(double)t["y"];
+            rect.Width = (int)(double)t["width"];
+            rect.Height = (int)(double)t["height"];
+            return rect;
+        }
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
@@ -57,27 +71,34 @@ namespace MonoUndertale
             UndertaleScript.StartUpLua();
             UndertaleScript.DoFile("scr_gamestart.lua");
             UndertaleScript.DoFile("scr_text.lua");
-            UndertaleScript.DoFile("gameobject.lua");
+       //     UndertaleScript.DoFile("gameobject.lua");
+          
+
+
             //  var chunk = L.CompileChunk(ProgramSource, "test.lua", new LuaCompileOptions() { DebugEngine = LuaStackTraceDebugger.Default }); // compile the script with debug informations, that is needed for a complete stack trace
 
             //  DG.dochunk(test);
             // G.DoChunk(test);
-            Fonts[0] = Content.Load<SpriteFont>("fnt_wingdings");
-            Fonts[1] = Content.Load<SpriteFont>("fnt_main");
-            Fonts[2] = Content.Load<SpriteFont>("fnt_maintext");
-            Fonts[3] = Content.Load<SpriteFont>("fnt_small");
+         //   Fonts[0] = Content.Load<SpriteFont>("fnt_wingdings");
+         //   Fonts[1] = Content.Load<SpriteFont>("fnt_main");
+         //   Fonts[2] = Content.Load<SpriteFont>("fnt_maintext");
+         //   Fonts[3] = Content.Load<SpriteFont>("fnt_small");
          //   Fonts[4] = Content.Load<SpriteFont>("fnt_plain");
          //   Fonts[5] = Content.Load<SpriteFont>("fnt_plainbig");
-            Fonts[6] = Content.Load<SpriteFont>("fnt_curs");
-            Fonts[8] = Content.Load<SpriteFont>("fnt_comicsans");
+          //  Fonts[6] = Content.Load<SpriteFont>("fnt_curs");
+          //  Fonts[8] = Content.Load<SpriteFont>("fnt_comicsans");
           //  Fonts[9] = Content.Load<SpriteFont>("fnt_papyrus");
-            Fonts[10] = Content.Load<SpriteFont>("fnt_maintext_2");
+          //  Fonts[10] = Content.Load<SpriteFont>("fnt_maintext_2");
         
             UndertaleScript.L.Globals["draw_set_font"] = new Action<DynValue>((DynValue o) =>
             {
-                if(o.Type == DataType.Number)
+                if (o.Type == DataType.Number)
                 {
-                    currentFont = Fonts[(int) o.Number];
+                    currentFont = FontSpritesIndex[(int)o.Number];
+                }
+                else if (o.Type == DataType.String)
+                {
+                    currentFont = FontSpritesName[o.String];
                 }
                
             });
@@ -97,7 +118,19 @@ namespace MonoUndertale
             {
                 if (currentFont == null) return;
                 if (s == null) return;
-                spriteBatch.DrawString(currentFont, s, new Vector2(x, y), currentFontColor);
+                if(s.Length == 1)
+                {
+                    Sprite.Frame f = currentFont[s[0]];
+                    spriteBatch.Draw(f.Texture, new Vector2(x, y), f.Origin, currentFontColor);
+                   // spriteBatch.Draw(f.Texture, new Vector2(x, y),null, null,0.0f,null, currentFontColor,SpriteEffects.None,0);
+                   // spriteBatch.Draw(f.Texture, new Vector2(x, y), null, f.Origin, null, 0.0f, null, currentFontColor, SpriteEffects.None, 0);
+
+                }
+                else
+                {
+                    Debug.WriteLine("meh draw_text");
+                }
+              //  spriteBatch.DrawString(currentFont, s, new Vector2(x, y), currentFontColor);
                // draw_set_font(self.myfont)
 
               //  draw_set_color(self.mycolor)
@@ -130,9 +163,9 @@ namespace MonoUndertale
         }
         //int room_index = 34; //306 battle room
         int room_index = 306;
-      //  const string data_win_filename = @"C:\Undertale\UndertaleOld\data.win";
+       const string data_win_filename = @"C:\Undertale\UndertaleOld\data.win";
       //  D:\UndertaleHacking
-          const string data_win_filename = @"D:\Old Undertale\files\data.win";
+      //    const string data_win_filename = @"D:\Old Undertale\files\data.win";
         /// <summary>
         /// LoadContent will be called once per game and is the place to load
         /// all of your content.
@@ -151,7 +184,38 @@ namespace MonoUndertale
 
             UndertaleResources.UndertaleResrouce.LoadResrouces(sr.BaseStream);
             Sprite.LoadTextures(GraphicsDevice, sr.BaseStream);
+            var fontInfo = UndertaleScript.L.DoString("return _fonts");
 
+            foreach (var ff in fontInfo.Table.Pairs)
+            {
+                if(ff.Key.Type == DataType.Number)
+                {
+                    int index = (int)ff.Key.Number;
+                    var f = ff.Value;
+                    Dictionary<char, Sprite.Frame> font = new Dictionary<char, Sprite.Frame>();
+                    Table glyphs = f.Table["glyphs"] as Table;
+                    Table tframe = f.Table["frame"] as Table;
+                    Rectangle frame = ReadRectangle(tframe);
+                    frame.X += 0;
+                    frame.Y += 0;
+                    int offsetx = (int)(double)tframe["offsetx"];
+                    int offsety = (int)(double)tframe["offsety"];
+                    int texture = (int)(double)tframe["texture"];
+                    foreach (var g in glyphs.Values)
+                    {
+                        char ch = (g.Table["ch"] as string)[0];
+                        Rectangle offset = ReadRectangle(g.Table);
+                        offset.X += frame.X;
+                        offset.Y += frame.Y;
+                        var s = Sprite.CreateFrame(texture, offset);
+                       
+                        font.Add(ch, s);
+                    }
+                    FontSpritesIndex.Add(index, font);
+                    FontSpritesName.Add(f.Table["name"] as string, font);
+                }
+               
+            }
             sr.Close(); // Shouldn't need anymore
            test = new Room(room_index); // "room_ruins3");
                                         //  test = new Room("room_ruins3"); // "room_ruins3");

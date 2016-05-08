@@ -1,4 +1,16 @@
-﻿
+﻿require "font_info.lua"
+require "sprite_info.lua"
+
+function GetSprite(index, frame)
+	local sprite = _sprites[index];
+	if sprite then
+		local frames = sprite.frames
+		return frames[(frame+1) % #frames]
+	else
+		return nil
+	end
+
+end
 
 -- helper functions
 
